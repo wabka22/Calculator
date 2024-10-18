@@ -11,7 +11,7 @@ private:
 	std::string infix;
 	std::vector<std::string>  postfix;
 	std::vector<std::string> lexems;
-	static std::map<std::string, int> priority;
+	static std::map<std::string, int> operator_priority;
 private:
 	void parse();
 	bool is_operator(char c) const;
@@ -47,8 +47,10 @@ TArithmeticExpression::TArithmeticExpression(const std::string& _infix) {
 	}
 	to_postfix();
 }
-std::map<std::string, int> TArithmeticExpression::priority = {
+
+std::map<std::string, int> TArithmeticExpression::operator_priority = {
 	{"*", 3},
+	{"%", 3},
 	{"/", 3},
 	{"+", 2},
 	{"-", 2},
@@ -61,7 +63,7 @@ void TArithmeticExpression::remove_spaces(std::string& str) const {
 }
 
 bool TArithmeticExpression::is_operator(char c) const {
-	return (c == '+' || c == '-' || c == '*' || c == '/');
+	return (c == '+' || c == '-' || c == '*' || c == '/' || c == '%');
 }
 
 bool TArithmeticExpression::is_parenthesis(char c) const {
@@ -79,7 +81,7 @@ void TArithmeticExpression::parse()
 			}
 			lexems.push_back(std::string(1, c));
 		}
-		else if (isdigit(c)) {
+		else if (isdigit(c)|| c=='.') {
 			currentElement += c;
 		}
 	}
@@ -105,7 +107,7 @@ std::string TArithmeticExpression::to_postfix() {
 			st.pop();
 		}
 		else if (is_operator(item[0])) {
-			while (!st.empty() && priority[item] <= priority[st.top()]) {
+			while (!st.empty() && operator_priority[item] <= operator_priority[st.top()]) {
 				postfixExpression += st.top();
 				postfix.push_back(st.top());
 				st.pop();
@@ -125,10 +127,11 @@ std::string TArithmeticExpression::to_postfix() {
 	return postfixExpression;
 }
 
-double TArithmeticExpression::calculate() const{
+double TArithmeticExpression::calculate() const {
 	std::stack<double> st;
 	double leftOperand, rightOperand;
-	for (std::string lexem : postfix) {
+
+	for (const std::string& lexem : postfix) {
 		if (lexem == "+") {
 			rightOperand = st.top(); st.pop();
 			leftOperand = st.top(); st.pop();
@@ -147,19 +150,28 @@ double TArithmeticExpression::calculate() const{
 		else if (lexem == "/") {
 			rightOperand = st.top(); st.pop();
 			leftOperand = st.top(); st.pop();
-			if (rightOperand == 0) { throw"Error"; }
+			if (rightOperand == 0) {
+				throw std::runtime_error("Division by zero");
+			}
 			st.push(leftOperand / rightOperand);
 		}
 		else if (lexem == "%") {
 			rightOperand = st.top(); st.pop();
 			leftOperand = st.top(); st.pop();
-			if (rightOperand == 0) { throw ("Division by zero"); }
+			if (static_cast<long long>(leftOperand) != leftOperand ||
+				static_cast<long long>(rightOperand) != rightOperand) {
+				throw ("This operation is only for integer numbers.");
+			}
+			if (rightOperand == 0) {
+				throw ("Division by zero");
+			}
 			st.push(static_cast<long long>(leftOperand) % static_cast<long long>(rightOperand));
 		}
 		else {
 			st.push(stod(lexem));
 		}
 	}
+
 	return st.top();
 }
 #endif 
