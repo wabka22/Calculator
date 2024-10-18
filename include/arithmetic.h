@@ -5,24 +5,22 @@
 #include <map>
 #include <vector>
 #include <stack>
-using namespace std;
 
 class TArithmeticExpression {
 private:
-	string infix; 
-	vector<string> postfix;
-	vector<string> lexems;
-	static map<string, int> operator_priority; 
+	std::string infix;
+	std::vector<std::string> postfix;
+	std::vector<std::string> lexems;
+	static std::map<std::string, int> operator_priority;
 private:
 	void parse();
 	bool isOperator(char c) const;
 	bool isParenthesis(char c) const;
-	bool isDigitOrLetter(char c) const;
-	void removeSpaces(string& str) const;
+	void removeSpaces(std::string& str) const;
 	bool isCorrectInfixExpression() const;
 public:
-	TArithmeticExpression(const string& infix); 
-	string to_postfix();
+	TArithmeticExpression(const std::string& infix);
+	std::string to_postfix();
 	double calculate() const;
 };
 
@@ -37,11 +35,11 @@ bool TArithmeticExpression::isCorrectInfixExpression() const {
 	return (count == 0);
 }
 
-void TArithmeticExpression::removeSpaces(string& str) const {
+void TArithmeticExpression::removeSpaces(std::string& str) const {
 	str.erase(remove(str.begin(), str.end(), ' '), str.end());
 }
 
-TArithmeticExpression::TArithmeticExpression(const string& _infix) {
+TArithmeticExpression::TArithmeticExpression(const std::string& _infix) {
 	if (_infix.empty()) {
 		throw("expression is empty");
 	}
@@ -53,7 +51,7 @@ TArithmeticExpression::TArithmeticExpression(const string& _infix) {
 	to_postfix();
 }
 
-map<string, int> TArithmeticExpression::operator_priority = {
+std::map<std::string, int> TArithmeticExpression::operator_priority = {
 	{"*", 3},
 	{"%", 3},
 	{"/", 3},
@@ -71,22 +69,21 @@ bool TArithmeticExpression::isParenthesis(char c) const {
 	return (c == '(' || c == ')');
 }
 
-bool TArithmeticExpression::isDigitOrLetter(char c) const {
-	return (isdigit(c) || c == '.' || isalpha(c));
-}
-
 void TArithmeticExpression::parse(){
-	string currentElement;
+	std::string currentElement;
 	for (char c : infix) {
 		if (isOperator(c) || isParenthesis(c) || c == ' ') {
 			if (!currentElement.empty()) {
 				lexems.push_back(currentElement);
 				currentElement = "";
 			}
-			lexems.push_back(string(1, c));
+			lexems.push_back(std::string(1, c));
 		}
-		else if (isDigitOrLetter(c)) {
+		else if (isdigit(c)) {
 			currentElement += c;
+		}
+		else {
+			throw ("An invalid value was entered.");
 		}
 	}
 	if (!currentElement.empty()) {
@@ -94,11 +91,11 @@ void TArithmeticExpression::parse(){
 	}
 }
 
-string TArithmeticExpression::to_postfix() {
+std::string TArithmeticExpression::to_postfix() {
 	parse();
-	stack<string> st;
-	string postfixExpression;
-	for (string item : lexems) {
+	std::stack<std::string> st;
+	std::string postfixExpression;
+	for (std::string item : lexems) {
 		if (item == "(") {
 			st.push(item);
 		}
@@ -132,9 +129,9 @@ string TArithmeticExpression::to_postfix() {
 }
 
 double TArithmeticExpression::calculate() const {
-	stack<double> st;
+	std::stack<double> st;
 	long long leftOperand, rightOperand;
-	for (string lexem : postfix) {
+	for (std::string lexem : postfix) {
 		if (lexem == "+") {
 			rightOperand = st.top(); st.pop();
 			leftOperand = st.top(); st.pop();
