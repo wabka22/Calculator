@@ -13,22 +13,29 @@ private:
 	vector<string> postfix;
 	vector<string> lexems;
 	static map<string, int> operator_priority; 
-	map<string, long long> operands; 
 private:
 	void parse();
-	bool isConstant(const string& str) const; 
 	bool isOperator(char c) const;
 	bool isParenthesis(char c) const;
 	bool isDigitOrLetter(char c) const;
-	double calculate(const map<string, long long>& values);
 	void removeSpaces(string& str) const;
 	bool isCorrectInfixExpression();
 public:
 	TArithmeticExpression(const string& infix); 
 	string toPostfix();
-	void setValues(); 
 	double calculate(); 
 };
+
+bool TArithmeticExpression::isCorrectInfixExpression() {
+	int count = 0;
+	for (char c : infix)
+	{
+		if (c == '(') count++;
+		else if (c == ')') count--;
+		if (count < 0) return false;
+	}
+	return (count == 0);
+}
 
 TArithmeticExpression::TArithmeticExpression(const string& _infix) {
 	if (_infix.empty()) {
@@ -55,15 +62,6 @@ void TArithmeticExpression::removeSpaces(string& str) const {
 	str.erase(remove(str.begin(), str.end(), ' '), str.end());
 }
 
-bool TArithmeticExpression::isConstant(const string& s) const {
-	for (char c : s) {
-		if (!isdigit(c) && c != '.') {
-			return false;
-		}
-	}
-	return true;
-}
-
 bool TArithmeticExpression::isOperator(char c) const {
 	return (c == '+' || c == '-' || c == '*' || c == '/' || c == '%');
 }
@@ -74,17 +72,6 @@ bool TArithmeticExpression::isParenthesis(char c) const {
 
 bool TArithmeticExpression::isDigitOrLetter(char c) const {
 	return (isdigit(c) || c == '.' || isalpha(c));
-}
-
-void TArithmeticExpression::setValues() {
-	long long  value;
-	for (auto& op : operands) {
-		if (!isConstant(op.first)) {
-			cout << "Enter value of " << op.first << ":";
-			cin >> value;
-			operands[op.first] = value;
-		}
-	}
 }
 
 void TArithmeticExpression::parse(){
@@ -131,8 +118,6 @@ string TArithmeticExpression::toPostfix() {
 			st.push(item);
 		}
 		else {
-			long long  value = isConstant(item) ? stod(item) : 0.0;
-			operands.insert({ item, value });
 			postfix.push_back(item);
 			postfixExpression += item;
 		}
@@ -145,13 +130,7 @@ string TArithmeticExpression::toPostfix() {
 	return postfixExpression;
 }
 
-double TArithmeticExpression::calculate(const map<string, long long >& values){
-	for (auto& val : values) {
-		try {
-			operands.at(val.first) = val.second;
-		}
-		catch (out_of_range& e) {}
-	}
+double TArithmeticExpression::calculate(){
 	stack<double> st;
 	long long leftOperand, rightOperand;
 	for (string lexem : postfix) {
@@ -183,25 +162,9 @@ double TArithmeticExpression::calculate(const map<string, long long >& values){
 			   st.push(static_cast<long long>(leftOperand) % static_cast<long long>(rightOperand));
 		}
 		else {
-			st.push(operands[lexem]);
+			st.push(stod(lexem));
 		}
 	}
 	return st.top();
 }
-
-double TArithmeticExpression::calculate() {
-	return calculate(operands);
-}
-
-bool TArithmeticExpression::isCorrectInfixExpression(){
-	int count = 0;
-	for (char c : infix)
-	{
-		if (c == '(') count++;
-		else if (c == ')') count--;
-		if (count < 0) return false;
-	}
-	return (count == 0);
-}
-
 #endif 

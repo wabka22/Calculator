@@ -9,8 +9,6 @@ int main() {
 		cout << "Enter expression:";
 		getline(cin, str);
 		TArithmeticExpression example(str);
-		cout << "Postfix:" << example.toPostfix() << endl;;
-		example.setValues();
 		cout << "Result:" << example.calculate() << endl;
 	}
 	catch (char* exp) {
