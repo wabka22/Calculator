@@ -19,14 +19,14 @@ private:
 	bool isParenthesis(char c) const;
 	bool isDigitOrLetter(char c) const;
 	void removeSpaces(string& str) const;
-	bool isCorrectInfixExpression();
+	bool isCorrectInfixExpression() const;
 public:
 	TArithmeticExpression(const string& infix); 
-	string toPostfix();
-	double calculate(); 
+	string to_postfix();
+	double calculate() const;
 };
 
-bool TArithmeticExpression::isCorrectInfixExpression() {
+bool TArithmeticExpression::isCorrectInfixExpression() const {
 	int count = 0;
 	for (char c : infix)
 	{
@@ -35,6 +35,10 @@ bool TArithmeticExpression::isCorrectInfixExpression() {
 		if (count < 0) return false;
 	}
 	return (count == 0);
+}
+
+void TArithmeticExpression::removeSpaces(string& str) const {
+	str.erase(remove(str.begin(), str.end(), ' '), str.end());
 }
 
 TArithmeticExpression::TArithmeticExpression(const string& _infix) {
@@ -46,6 +50,7 @@ TArithmeticExpression::TArithmeticExpression(const string& _infix) {
 	if (!(isCorrectInfixExpression())) {
 		throw("non-correct number of parentheses");
 	}
+	to_postfix();
 }
 
 map<string, int> TArithmeticExpression::operator_priority = {
@@ -57,10 +62,6 @@ map<string, int> TArithmeticExpression::operator_priority = {
 	{"(", 1},
 	{")", 1}
 };
-
-void TArithmeticExpression::removeSpaces(string& str) const {
-	str.erase(remove(str.begin(), str.end(), ' '), str.end());
-}
 
 bool TArithmeticExpression::isOperator(char c) const {
 	return (c == '+' || c == '-' || c == '*' || c == '/' || c == '%');
@@ -93,7 +94,7 @@ void TArithmeticExpression::parse(){
 	}
 }
 
-string TArithmeticExpression::toPostfix() {
+string TArithmeticExpression::to_postfix() {
 	parse();
 	stack<string> st;
 	string postfixExpression;
@@ -130,7 +131,7 @@ string TArithmeticExpression::toPostfix() {
 	return postfixExpression;
 }
 
-double TArithmeticExpression::calculate(){
+double TArithmeticExpression::calculate() const {
 	stack<double> st;
 	long long leftOperand, rightOperand;
 	for (string lexem : postfix) {
