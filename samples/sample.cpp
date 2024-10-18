@@ -1,18 +1,16 @@
-#include <iostream>
 #include "arithmetic.h"
 
-using namespace std;
 
 int main() {
 	try {
-		string str;
-		cout << "Enter expression:";
-		getline(cin, str);
+		std::string str;
+		std::cout << "Enter expression:";
+		std::getline(std::cin, str);
 		TArithmeticExpression example(str);
-		cout << "Result:" << example.calculate() << endl;
+		std::cout << "Result:" << example.calculate() << std::endl;
 	}
 	catch (char* exp) {
-		cout << exp << endl;
+		std::cout << exp << std::endl;
 	}
 	return 0;
 }
