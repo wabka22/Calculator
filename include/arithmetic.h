@@ -129,9 +129,11 @@ std::string TArithmeticExpression::to_postfix() {
 }
 
 double TArithmeticExpression::calculate() const {
-	std::stack<double> st;
+	std::stack<long long> st;
+	double frac_rem = 0.0;
 	long long leftOperand, rightOperand;
-	for (std::string lexem : postfix) {
+
+	for (const std::string& lexem : postfix) {
 		if (lexem == "+") {
 			rightOperand = st.top(); st.pop();
 			leftOperand = st.top(); st.pop();
@@ -150,19 +152,25 @@ double TArithmeticExpression::calculate() const {
 		else if (lexem == "/") {
 			rightOperand = st.top(); st.pop();
 			leftOperand = st.top(); st.pop();
-			if (rightOperand == 0) { throw ("Division by zero"); }
-			st.push(static_cast<double>(leftOperand) / static_cast<double>(rightOperand));
+			if (rightOperand == 0) {
+				throw std::runtime_error("Division by zero");
+			}
+			st.push(leftOperand / rightOperand);
+			frac_rem += static_cast<double>(leftOperand % rightOperand) / rightOperand;
 		}
 		else if (lexem == "%") {
 			rightOperand = st.top(); st.pop();
 			leftOperand = st.top(); st.pop();
-			if (rightOperand == 0) { throw ("Division by zero"); }
-			   st.push(static_cast<long long>(leftOperand) % static_cast<long long>(rightOperand));
+			if (rightOperand == 0) {
+				throw std::runtime_error("Division by zero");
+			}
+			st.push(leftOperand % rightOperand);
 		}
 		else {
-			st.push(stod(lexem));
+			st.push(std::stoll(lexem));
 		}
 	}
-	return st.top();
+
+	return st.top() + frac_rem;
 }
 #endif 
