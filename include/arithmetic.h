@@ -8,25 +8,28 @@
 
 class TArithmeticExpression {
 private:
-	std::string infix;
-	std::vector<std::string> postfix;
-	std::vector<std::string> lexems;
+	std::string infix_;
+	std::vector<std::string> postfix_;
+	std::vector<std::string> lexems_;
 	static std::map<std::string, int> operator_priority;
+
 private:
-	void parse();
-	bool isOperator(char c) const;
-	bool isParenthesis(char c) const;
-	void removeSpaces(std::string& str) const;
-	bool isCorrectInfixExpression() const;
+	void Parse() noexcept;
+	bool IsOperator(char c) const noexcept;
+	bool IsParenthesis(char c) const noexcept;
+	void RemoveSpaces(std::string& str) const noexcept;
+	bool IsCorrectInfixExpression() const noexcept;
+	std::string ToPostfix() noexcept;
+
 public:
-	TArithmeticExpression(const std::string& infix);
-	std::string to_postfix();
-	double calculate() const;
+	TArithmeticExpression(const std::string& infix_);
+	double Calculate() const;
 };
 
-bool TArithmeticExpression::isCorrectInfixExpression() const {
+bool TArithmeticExpression::IsCorrectInfixExpression() const noexcept
+{
 	int count = 0;
-	for (char c : infix)
+	for (char c : infix_)
 	{
 		if (c == '(') count++;
 		else if (c == ')') count--;
@@ -35,20 +38,16 @@ bool TArithmeticExpression::isCorrectInfixExpression() const {
 	return (count == 0);
 }
 
-void TArithmeticExpression::removeSpaces(std::string& str) const {
-	str.erase(remove(str.begin(), str.end(), ' '), str.end());
-}
-
 TArithmeticExpression::TArithmeticExpression(const std::string& _infix) {
 	if (_infix.empty()) {
-		throw("expression is empty");
+		throw std::invalid_argument("Expression is empty");
 	}
-	infix = _infix;
-	removeSpaces(infix);
-	if (!(isCorrectInfixExpression())) {
-		throw("non-correct number of parentheses");
+	infix_ = _infix;
+	RemoveSpaces(infix_);
+	if (!IsCorrectInfixExpression()) {
+		throw std::invalid_argument("Incorrect number of parentheses");
 	}
-	to_postfix();
+	ToPostfix();
 }
 
 std::map<std::string, int> TArithmeticExpression::operator_priority = {
@@ -61,79 +60,81 @@ std::map<std::string, int> TArithmeticExpression::operator_priority = {
 	{")", 1}
 };
 
-bool TArithmeticExpression::isOperator(char c) const {
+void TArithmeticExpression::RemoveSpaces(std::string& str) const noexcept {
+	str.erase(remove(str.begin(), str.end(), ' '), str.end());
+}
+
+bool TArithmeticExpression::IsOperator(char c) const  noexcept {
 	return (c == '+' || c == '-' || c == '*' || c == '/' || c == '%');
 }
 
-bool TArithmeticExpression::isParenthesis(char c) const {
+bool TArithmeticExpression::IsParenthesis(char c) const noexcept {
 	return (c == '(' || c == ')');
 }
 
-void TArithmeticExpression::parse(){
+void TArithmeticExpression::Parse() noexcept
+{
 	std::string currentElement;
-	for (char c : infix) {
-		if (isOperator(c) || isParenthesis(c) || c == ' ') {
+	for (char c : infix_) {
+		if (IsParenthesis(c) || IsOperator(c)) {
 			if (!currentElement.empty()) {
-				lexems.push_back(currentElement);
-				currentElement = "";
+				lexems_.push_back(currentElement);
+				currentElement.clear();
 			}
-			lexems.push_back(std::string(1, c));
+			lexems_.push_back(std::string(1, c));
 		}
-		else if (isdigit(c)) {
+		else if (isdigit(c) || c == '.') {
 			currentElement += c;
-		}
-		else {
-			throw ("An invalid value was entered.");
 		}
 	}
 	if (!currentElement.empty()) {
-		lexems.push_back(currentElement);
+		lexems_.push_back(currentElement);
 	}
 }
 
-std::string TArithmeticExpression::to_postfix() {
-	parse();
+std::string TArithmeticExpression::ToPostfix() noexcept {
+	Parse();
 	std::stack<std::string> st;
 	std::string postfixExpression;
-	for (std::string item : lexems) {
+	for (std::string item : lexems_) {
 		if (item == "(") {
 			st.push(item);
 		}
 		else if (item == ")") {
 			while (st.top() != "(") {
 				postfixExpression += st.top();
-				postfix.push_back(st.top());
+				postfix_.push_back(st.top());
 				st.pop();
 			}
 			st.pop();
 		}
-		else if (isOperator(item[0])) {
+		else if (IsOperator(item[0])) {
 			while (!st.empty() && operator_priority[item] <= operator_priority[st.top()]) {
 				postfixExpression += st.top();
-				postfix.push_back(st.top());
+				postfix_.push_back(st.top());
 				st.pop();
 			}
 			st.push(item);
 		}
 		else {
-			postfix.push_back(item);
+			postfix_.push_back(item);
 			postfixExpression += item;
 		}
 	}
 	while (!st.empty()) {
 		postfixExpression += st.top();
-		postfix.push_back(st.top());
+		postfix_.push_back(st.top());
 		st.pop();
 	}
 	return postfixExpression;
 }
 
-double TArithmeticExpression::calculate() const {
+double TArithmeticExpression::Calculate() const {
 	std::stack<long long> st;
 	double frac_rem = 0.0;
 	long long leftOperand, rightOperand;
 
-	for (const std::string& lexem : postfix) {
+	for (const std::string& lexem : postfix_) {
 		if (lexem == "+") {
 			rightOperand = st.top(); st.pop();
 			leftOperand = st.top(); st.pop();
