@@ -14,22 +14,23 @@ private:
 	static std::map<std::string, int> operator_priority;
 
 private:
-	void Parse() noexcept;
-	bool IsOperator(char c) const noexcept;
-	bool IsParenthesis(char c) const noexcept;
+	void Parse();
+	std::string ToPostfix();
+	bool IsOperator(const char c) const noexcept;
+	bool IsParenthesis(const char c) const noexcept;
+	bool IsFunction(const std::string& str) const noexcept;
 	void RemoveSpaces(std::string& str) const noexcept;
-	bool IsCorrectInfixExpression() const noexcept;
-	std::string ToPostfix() noexcept;
+	bool IsCorrectInfixExpression(const std::string str) const noexcept;
 
 public:
 	TArithmeticExpression(const std::string& infix_);
 	double Calculate() const;
 };
 
-bool TArithmeticExpression::IsCorrectInfixExpression() const noexcept
+bool TArithmeticExpression::IsCorrectInfixExpression(const std::string str) const noexcept
 {
 	int count = 0;
-	for (char c : infix_)
+	for (char c : str)
 	{
 		if (c == '(') count++;
 		else if (c == ')') count--;
@@ -44,7 +45,7 @@ TArithmeticExpression::TArithmeticExpression(const std::string& _infix) {
 	}
 	infix_ = _infix;
 	RemoveSpaces(infix_);
-	if (!IsCorrectInfixExpression()) {
+	if (!IsCorrectInfixExpression(infix_)) {
 		throw std::invalid_argument("Incorrect number of parentheses");
 	}
 	ToPostfix();
@@ -72,27 +73,50 @@ bool TArithmeticExpression::IsParenthesis(char c) const noexcept {
 	return (c == '(' || c == ')');
 }
 
-void TArithmeticExpression::Parse() noexcept
+bool TArithmeticExpression::IsFunction(const std::string& s) const noexcept {
+	return (s == "exp" || s == "sin" || s == "cos" || s == "lg" || s == "sqrt");
+}
+
+void TArithmeticExpression::Parse()
 {
 	std::string currentElement;
-	for (char c : infix_) {
+	for (size_t i = 0; i < infix_.size(); ++i) {
+		char c = infix_[i];
+
 		if (IsParenthesis(c) || IsOperator(c)) {
 			if (!currentElement.empty()) {
-				lexems_.push_back(currentElement);
+				if (IsFunction(currentElement)) {
+					lexems_.push_back(currentElement);
+				}
+				else if (isalpha(currentElement[0])) {
+					throw std::invalid_argument("Unknown function: " + currentElement);
+				}
+				else {
+					lexems_.push_back(currentElement);
+				}
 				currentElement.clear();
 			}
 			lexems_.push_back(std::string(1, c));
 		}
-		else if (isdigit(c)|| c=='.') {
+		else if (isdigit(c) || c == '.' || isalpha(c)) {
 			currentElement += c;
 		}
 	}
+
 	if (!currentElement.empty()) {
-		lexems_.push_back(currentElement);
+		if (IsFunction(currentElement)) {
+			lexems_.push_back(currentElement);
+		}
+		else if (isalpha(currentElement[0])) {
+			throw std::invalid_argument("Unknown function: " + currentElement);
+		}
+		else {
+			lexems_.push_back(currentElement);
+		}
 	}
 }
 
-std::string TArithmeticExpression::ToPostfix() noexcept {
+std::string TArithmeticExpression::ToPostfix() {
 	Parse();
 	std::stack<std::string> st;
 	std::string postfixExpression;
@@ -165,15 +189,40 @@ double TArithmeticExpression::Calculate() const {
 				throw std::invalid_argument("This operation is not defined for this type of numbers");
 			}
 			if (rightOperand == 0) {
-				throw  std::runtime_error("Division by zero");
+				throw std::runtime_error("Division by zero");
 			}
 			st.push(static_cast<long long>(leftOperand) % static_cast<long long>(rightOperand));
 		}
+		else if (IsFunction(lexem)) {
+			double operand = st.top(); st.pop();
+			if (lexem == "exp") {
+				st.push(std::exp(operand));
+			}
+			else if (lexem == "sin") {
+				st.push(std::sin(operand));
+			}
+			else if (lexem == "cos") {
+				st.push(std::cos(operand));
+			}
+			else if (lexem == "lg") {
+				if (operand <= 0) {
+					throw std::domain_error("Logarithm of non-positive number");
+				}
+				st.push(std::log10(operand));
+			}
+			else if (lexem == "sqrt") {
+				if (operand < 0) {
+					throw std::domain_error("Square root of negative number");
+				}
+				st.push(std::sqrt(operand));
+			}
+		}
 		else {
-			st.push(stod(lexem));
+			st.push(std::stod(lexem));
 		}
 	}
 
 	return st.top();
 }
+
 #endif 
