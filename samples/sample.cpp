@@ -6,6 +6,7 @@ int main() {
 		std::cout << "Enter expression:";
 		std::getline(std::cin, str);
 		TArithmeticExpression example(str);
+		example.SetValues();
 		std::cout << "Result:" << example.Calculate() << std::endl;
 	}
 	catch (const std::exception& e) {
