@@ -81,7 +81,7 @@ bool Calculator::IsParenthesis(char c) const noexcept {
 }
 
 bool Calculator::IsFunction(const std::string& s) const noexcept {
-	return (s == "exp" || s == "sin" || s == "cos" || s == "lg" || s == "sqrt");
+	return (s == "exp" || s == "sin" || s == "cos" || s == "lg" || s=="log" || s == "sqrt");
 }
 
 bool Calculator::IsConst(const std::string& s) const noexcept {
@@ -238,6 +238,15 @@ double Calculator::Calculate(const std::map< std::string, double>& values) {
 					throw std::domain_error("Logarithm of non-positive number");
 				}
 				st.push(std::log10(operand));
+			}
+			else if (lexem == "log") {
+				int degree;
+				std::cout << "Enter the degree of the logarithm: ";
+				std::cin >> degree;
+				if (degree <= 0 || degree == 1 || operand <= 0) {
+					throw std::domain_error("Logarithm degree must be greater than 0 and not equal to 1, or operand must be positive");
+				}
+				st.push(std::log(operand) / std::log(degree));
 			}
 			else if (lexem == "sqrt") {
 				if (operand < 0) {
