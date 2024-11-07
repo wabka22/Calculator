@@ -3,8 +3,10 @@
 #include <iostream>
 #include <stdexcept>
 #include <algorithm> 
-#include <cmath> 
+#include <variant>
+#include <cmath>
 #include <string>
+#include <functional>
 #include <map>
 #include <vector>
 #include <stack>
@@ -14,24 +16,22 @@ private:
 	std::string infix_;
 	std::vector<std::string> postfix_;
 	std::vector<std::string> lexems_;
-	std::map<std::string, double> operands;
+	std::map<std::string, std::variant<long long, double>> operands;
 	static std::map<std::string, int> operator_priority;
 
 private:
-	void Parse() ;
-	std::string ToPostfix() ;
-	bool IsConst(const std::string& st) const noexcept;
+	void Parse();
+	std::string ToPostfix();
 	bool IsOperator(const char c) const noexcept;
 	bool IsDigitOrLetter(char c) const noexcept;
 	bool IsParenthesis(const char c) const noexcept;
 	bool IsFunction(const std::string& str) const noexcept;
-	double Calculate(const std::map<std::string, double>& values);
 	void RemoveSpaces(std::string& str) const noexcept;
 	bool IsCorrectExpression(const std::string str) const noexcept;
-	void SetValues() noexcept;
 public:
 	Calculator(const std::string& infix_);
-	double Calculate();
+	std::variant<long long, double> Calculate(const std::map<std::string, std::variant<long long, double>>& values = {});
+	std::map<std::string, std::variant<long long, double>>& GetNameOperands() {return operands;}
 };
 
 bool Calculator::IsCorrectExpression(const std::string str) const noexcept
@@ -84,7 +84,7 @@ bool Calculator::IsFunction(const std::string& s) const noexcept {
 	return (s == "exp" || s == "sin" || s == "cos" || s == "lg" || s=="log" || s == "sqrt");
 }
 
-bool Calculator::IsConst(const std::string& s) const noexcept {
+bool IsConst(const std::string& s) noexcept {
 	for (char c : s) {
 		if (!isdigit(c) && c != '.') {
 			return false;
@@ -95,17 +95,6 @@ bool Calculator::IsConst(const std::string& s) const noexcept {
 
 bool Calculator::IsDigitOrLetter(char c) const noexcept {
 	return (isdigit(c) || c == '.' || isalpha(c));
-}
-
-void Calculator::SetValues() noexcept {
-	double value;
-	for (auto& op : operands) {
-		if (!IsConst(op.first)) {
-			std::cout << "Enter value of " << op.first << ":";
-			std::cin >> value;
-			operands[op.first] = value;
-		}
-	}
 }
 
 void Calculator::Parse(){
@@ -174,56 +163,63 @@ std::string Calculator::ToPostfix() {
 	return postfixExpression;
 }
 
-double Calculator::Calculate(const std::map< std::string, double>& values) {
-	SetValues();
-
+std::variant<long long, double> Calculator::Calculate(const std::map< std::string, std::variant<long long, double>>& values) {
 	for (auto& val : values) {
 		try {
 			operands.at(val.first) = val.second;
 		}
 		catch (std::out_of_range& e) {}
 	}
-	std::stack<double> st;
-	double leftOperand, rightOperand;
+
+	std::stack<std::variant<long long, double>> st;
+
+	auto apply_operation = [](auto a, auto b, const auto& op) -> std::variant<long long, double> {
+		return std::visit([&](auto type_a, auto type_b) {
+			return std::variant<long long, double>{op(type_a, type_b)};
+			}, a, b);
+		};
 
 	for (const std::string& lexem : postfix_) {
-		if (lexem == "+") {
-			rightOperand = st.top(); st.pop();
-			leftOperand = st.top(); st.pop();
-			st.push(leftOperand + rightOperand);
-		}
-		else if (lexem == "-") {
-			rightOperand = st.top(); st.pop();
-			leftOperand = st.top(); st.pop();
-			st.push(leftOperand - rightOperand);
-		}
-		else if (lexem == "*") {
-			rightOperand = st.top(); st.pop();
-			leftOperand = st.top(); st.pop();
-			st.push(leftOperand * rightOperand);
-		}
-		else if (lexem == "/") {
-			rightOperand = st.top(); st.pop();
-			leftOperand = st.top(); st.pop();
-			if (rightOperand == 0) {
-				throw std::runtime_error("Division by zero");
+		if (lexem == "+" || lexem == "-" || lexem == "*" || lexem == "/") {
+			auto rightOperand = st.top(); st.pop();
+			auto leftOperand = st.top(); st.pop();
+
+			if (lexem == "+") {
+				st.push(apply_operation(leftOperand, rightOperand, std::plus<>()));
 			}
-			st.push(leftOperand / rightOperand);
+			else if (lexem == "-") {
+				st.push(apply_operation(leftOperand, rightOperand, std::minus<>()));
+			}
+			else if (lexem == "*") {
+				st.push(apply_operation(leftOperand, rightOperand, std::multiplies<>()));
+			}
+			else if (lexem == "/") {
+				if (std::visit([](auto val) { return val == 0; }, rightOperand)) {
+					throw std::runtime_error("Division by zero");
+				}
+				st.push(apply_operation(leftOperand, rightOperand, std::divides<>()));
+			}
 		}
 		else if (lexem == "%") {
-			rightOperand = st.top(); st.pop();
-			leftOperand = st.top(); st.pop();
-			if (static_cast<long long>(leftOperand) != leftOperand ||
-				static_cast<long long>(rightOperand) != rightOperand) {
-				throw std::invalid_argument("This operation is not defined for this type of numbers");
+			auto rightOperand = st.top(); st.pop();
+			auto leftOperand = st.top(); st.pop();
+
+			if (!std::holds_alternative<long long>(leftOperand) || !std::holds_alternative<long long>(rightOperand)) {
+				throw std::invalid_argument("Modulo operation requires integer operands");
 			}
-			if (rightOperand == 0) {
+
+			long long left = std::get<long long>(leftOperand);
+			long long right = std::get<long long>(rightOperand);
+
+			if (right == 0) {
 				throw std::runtime_error("Division by zero");
 			}
-			st.push(static_cast<long long>(leftOperand) % static_cast<long long>(rightOperand));
+
+			st.push(left % right);
 		}
 		else if (IsFunction(lexem)) {
-			double operand = st.top(); st.pop();
+			double operand = std::get<double>(st.top()); st.pop();
+
 			if (lexem == "exp") {
 				st.push(std::exp(operand));
 			}
@@ -240,11 +236,9 @@ double Calculator::Calculate(const std::map< std::string, double>& values) {
 				st.push(std::log10(operand));
 			}
 			else if (lexem == "log") {
-				int degree;
-				std::cout << "Enter the degree of the logarithm: ";
-				std::cin >> degree;
+				double degree = std::get<double>(operands.at("log_base"));
 				if (degree <= 0 || degree == 1 || operand <= 0) {
-					throw std::domain_error("Logarithm degree must be greater than 0 and not equal to 1, or operand must be positive");
+					throw std::domain_error("Logarithm base must be greater than 0 and not equal to 1, and operand must be positive");
 				}
 				st.push(std::log(operand) / std::log(degree));
 			}
@@ -256,15 +250,31 @@ double Calculator::Calculate(const std::map< std::string, double>& values) {
 			}
 		}
 		else {
-			st.push(operands[lexem]);
+			st.push(operands.at(lexem));
 		}
 	}
 
 	return st.top();
 }
 
-double Calculator::Calculate() {
-	return Calculate(operands);
+std::variant<long long, double> ConvertToVariant(const std::string& str) {
+	if (str.find('.') != std::string::npos) {
+		try {
+			return std::stod(str);
+		}
+		catch (const std::exception&) {
+			throw std::invalid_argument("Invalid input: not a valid number.");
+		}
+	}
+	else {
+		try {
+			return std::stoll(str);
+		}
+		catch (const std::exception&) {
+			throw std::invalid_argument("Invalid input: not a valid integer.");
+		}
+	}
 }
+
 
 #endif 
