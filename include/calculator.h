@@ -80,7 +80,7 @@ bool Calculator::IsParenthesis(char c) const noexcept {
 }
 
 bool Calculator::IsFunction(const std::string& s) const noexcept {
-    return (s == "exp" || s == "sin" || s == "cos" || s == "lg" || s == "log" || s == "sqrt");
+    return (s == "exp" || s == "sin" || s == "cos" || s == "lg" || s == "log" || s == "ln" || s == "sqrt");
 }
 
 bool IsConst(const std::string& s) noexcept {
@@ -225,6 +225,9 @@ std::variant<long long, double> Calculator::Calculate(const std::map<std::string
             }
             else if (lexem == "lg") {
                 st.push(apply_unary_operation(operand, [](auto x) { return std::log10(x); }));
+            }
+            else if (lexem == "ln") {
+                st.push(apply_unary_operation(operand, [](auto x) { return std::log(x); }));
             }
             else if (lexem == "log") {
                 double degree;
