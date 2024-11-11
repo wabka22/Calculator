@@ -172,10 +172,16 @@ std::variant<long long, double> Calculator::Calculate(const std::map<std::string
 
     std::stack<std::variant<long long, double>> st;
 
-    auto apply_operation = [](auto a, auto b, const auto& op) -> std::variant<long long, double> {
+    auto apply_binary_operation = [](auto a, auto b, const auto& op) -> std::variant<long long, double> {
         return std::visit([&](auto type_a, auto type_b) {
             return std::variant<long long, double>{op(type_a, type_b)};
             }, a, b);
+        };
+
+    auto apply_unary_operation = [](std::variant<long long, double> a, const auto& op) -> std::variant<long long, double> {
+        return std::visit([&](auto type_a) {
+            return std::variant<long long, double>{ op(type_a) };
+            }, a);
         };
 
     for (const std::string& lexem : postfix_) {
@@ -184,64 +190,56 @@ std::variant<long long, double> Calculator::Calculate(const std::map<std::string
             auto leftOperand = st.top(); st.pop();
 
             if (lexem == "+") {
-                st.push(apply_operation(leftOperand, rightOperand, std::plus<>()));
+                st.push(apply_binary_operation(leftOperand, rightOperand, std::plus<>()));
             }
             else if (lexem == "-") {
-                st.push(apply_operation(leftOperand, rightOperand, std::minus<>()));
+                st.push(apply_binary_operation(leftOperand, rightOperand, std::minus<>()));
             }
             else if (lexem == "*") {
-                st.push(apply_operation(leftOperand, rightOperand, std::multiplies<>()));
+                st.push(apply_binary_operation(leftOperand, rightOperand, std::multiplies<>()));
             }
             else if (lexem == "/") {
                 if (std::visit([](auto val) { return val == 0; }, rightOperand)) {
                     throw std::runtime_error("Division by zero");
                 }
-                st.push(apply_operation(leftOperand, rightOperand, std::divides<>()));
+                st.push(apply_binary_operation(leftOperand, rightOperand, std::divides<>()));
             }
             else if (lexem == "%") {
                 if (std::visit([](auto val) { return val == 0; }, rightOperand)) {
                     throw std::runtime_error("Division by zero");
                 }
-                st.push(apply_operation(leftOperand, rightOperand, std::modulus<long long>()));
+                st.push(apply_binary_operation(leftOperand, rightOperand, std::modulus<long long>()));
             }
         }
         else if (IsFunction(lexem)) {
-            auto operand_variant = st.top(); st.pop();
-
-            double operand = std::holds_alternative<long long>(operand_variant)
-                ? static_cast<double>(std::get<long long>(operand_variant)) : std::get<double>(operand_variant);
+            auto operand = st.top(); st.pop();
 
             if (lexem == "exp") {
-                st.push(std::exp(operand));
+                st.push(apply_unary_operation(operand, [](auto x) { return std::exp(x); }));
             }
             else if (lexem == "sin") {
-                st.push(std::sin(operand));
+                st.push(apply_unary_operation(operand, [](auto x) { return std::sin(x); }));
             }
             else if (lexem == "cos") {
-                st.push(std::cos(operand));
+                st.push(apply_unary_operation(operand, [](auto x) { return std::cos(x); }));
             }
             else if (lexem == "lg") {
-                if (operand <= 0) {
-                    throw std::domain_error("Logarithm of non-positive number");
-                }
-                st.push(std::log10(operand));
+                st.push(apply_unary_operation(operand, [](auto x) { return std::log10(x); }));
             }
             else if (lexem == "log") {
                 double degree;
                 std::cout << "Enter degree:";
                 std::cin >> degree;
-                if (degree <= 0 || degree == 1 || operand <= 0) {
+                if (degree <= 0 || degree == 1 || std::get<double>(operand) <= 0) {
                     throw std::domain_error("Logarithm base must be greater than 0 and not equal to 1, and operand must be positive");
                 }
-                st.push(std::log(operand) / std::log(degree));
+                st.push(apply_unary_operation(operand, [degree](auto x) { return std::log(x) / std::log(degree); }));
             }
             else if (lexem == "sqrt") {
-                if (operand < 0) {
-                    throw std::domain_error("Square root of negative number");
-                }
-                st.push(std::sqrt(operand));
+                st.push(apply_unary_operation(operand, [](auto x) { return std::sqrt(x); }));
             }
         }
+
         else {
             st.push(operands.at(lexem));
         }
