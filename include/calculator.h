@@ -1,5 +1,5 @@
-#ifndef _CACLULATOR_H
-#define _CACLULATOR_H
+#ifndef _CALCULATOR_H
+#define _CALCULATOR_H
 #include <iostream>
 #include <stdexcept>
 #include <algorithm>
@@ -10,6 +10,7 @@
 #include <map>
 #include <vector>
 #include <stack>
+#include "polynomial.h"
 
 class Calculator {
 private:
@@ -162,7 +163,7 @@ std::string Calculator::ToPostfix() {
     return postfixExpression;
 }
 
-std::variant<long long, double> Calculator::Calculate(const std::map<std::string, std::variant<long long, double>>& values) {
+std::variant<long long, double, Polynomial> Calculator::Calculate(const std::map<std::string, std::variant<long long, double>>& values) {
     for (auto& val : values) {
         try {
             operands.at(val.first) = val.second;
@@ -170,16 +171,19 @@ std::variant<long long, double> Calculator::Calculate(const std::map<std::string
         catch (std::out_of_range& e) {}
     }
 
-    std::stack<std::variant<long long, double>> st;
+    std::stack<std::variant<long long, double, Polynomial>> st;
 
-    auto apply_binary_operation = [](auto a, auto b, const auto& op) -> std::variant<long long, double> {
+    auto apply_binary_operation = [](auto a, auto b, const auto& op) -> std::variant<long long, double, Polynomial > {
         return std::visit([&](auto type_a, auto type_b) {
             return std::variant<long long, double>{op(type_a, type_b)};
             }, a, b);
         };
 
-    auto apply_unary_operation = [](std::variant<long long, double> a, const auto& op) -> std::variant<long long, double> {
+    auto apply_unary_operation = [](std::variant<long long, double, Polynomial> a, const auto& op) -> std::variant<long long, double> {
         return std::visit([&](auto type_a) {
+            if constexpr (std::is_same_v<decltype(type_a), Polynomial>) {
+                throw std::invalid_argument("Unary operations are not supported for Polynomial type");
+            }
             return std::variant<long long, double>{ op(type_a) };
             }, a);
         };
@@ -270,4 +274,4 @@ std::variant<long long, double> ConvertToVariant(const std::string& str) {
     }
 }
 
-#endif // _CACLULATOR_H
+#endif // _CALCULATOR_H

@@ -26,6 +26,9 @@ int main() {
         if (std::holds_alternative<long long>(v)) {
             std::cout << "Result:" << std::get<long long>(v) << std::endl;
         }
+        if (std::holds_alternative<Polynomial>(v)) {
+            std::cout << "Result:" << std::get<Polynomial>(v) << std::endl;
+        }
     }
     catch (const std::exception& e) {
         std::cout << "Error: " << e.what() << std::endl;
