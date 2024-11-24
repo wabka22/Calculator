@@ -6,15 +6,15 @@ int main() {
         std::cout << "Enter expression:";
         std::getline(std::cin, str);
         Calculator example(str);
-        std::map<std::string, std::variant<long long, double>> operands = example.GetNameOperands();
-        std::variant<long long, double> value;
+        std::map<std::string, std::variant<long long, double, Polynomial>> operands = example.GetNameOperands();
+        std::variant<long long, double, Polynomial> value;
 
         for (auto& op : operands) {
             if (!IsConst(op.first)) {
-                if (isdigit(op.first[0])) throw std::invalid_argument("Operand name cannot start with a digit: " + op.first);
                 std::string value;
-                std::cout << "Enter value " << op.first << ":";
+                std::cout << "Enter value for " << op.first << " (or press no to skip): ";
                 std::getline(std::cin, value);
+                if (value == "no") value =op.first;
                 op.second = ConvertToVariant(value);
             }
         }

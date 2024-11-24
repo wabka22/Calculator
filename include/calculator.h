@@ -1,23 +1,20 @@
-#ifndef _CALCULATOR_H
-#define _CALCULATOR_H
-#include <iostream>
+﻿#ifndef _CACLULATOR_H
+#define _CACLULATOR_H
 #include <stdexcept>
 #include <algorithm>
 #include <variant>
 #include <cmath>
-#include <string>
 #include <functional>
-#include <map>
 #include <vector>
 #include <stack>
-#include "polynomial.h"
+#include <polynomial.h>
 
 class Calculator {
 private:
     std::string infix_;
     std::vector<std::string> postfix_;
     std::vector<std::string> lexems_;
-    std::map<std::string, std::variant<long long, double>> operands;
+    std::map<std::string, std::variant<long long, double, Polynomial>> operands;
     static std::map<std::string, int> operator_priority;
 
 private:
@@ -32,8 +29,8 @@ private:
 
 public:
     Calculator(const std::string& infix_);
-    std::variant<long long, double> Calculate(const std::map<std::string, std::variant<long long, double>>& values = {});
-    std::map<std::string, std::variant<long long, double>>& GetNameOperands() { return operands; }
+    std::variant<long long, double, Polynomial> Calculate(const std::map<std::string, std::variant<long long, double, Polynomial>>& values = {});
+    std::map<std::string, std::variant<long long, double, Polynomial>>& GetNameOperands() { return operands; }
 };
 
 bool Calculator::IsCorrectExpression(const std::string str) const noexcept {
@@ -59,6 +56,7 @@ Calculator::Calculator(const std::string& _infix) {
 }
 
 std::map<std::string, int> Calculator::operator_priority = {
+    {"^", 4},
     {"*", 3},
     {"%", 3},
     {"/", 3},
@@ -73,7 +71,7 @@ void Calculator::RemoveSpaces(std::string& str) const noexcept {
 }
 
 bool Calculator::IsOperator(char c) const noexcept {
-    return (c == '+' || c == '-' || c == '*' || c == '/' || c == '%');
+    return (c == '+' || c == '-' || c == '*' || c == '/' || c == '%' || c == '^');
 }
 
 bool Calculator::IsParenthesis(char c) const noexcept {
@@ -163,99 +161,132 @@ std::string Calculator::ToPostfix() {
     return postfixExpression;
 }
 
-std::variant<long long, double, Polynomial> Calculator::Calculate(const std::map<std::string, std::variant<long long, double>>& values) {
+std::variant<long long, double, Polynomial> Calculator::Calculate(const std::map<std::string, std::variant<long long, double, Polynomial>>& values) {
     for (auto& val : values) {
         try {
             operands.at(val.first) = val.second;
         }
-        catch (std::out_of_range& e) {}
+        catch (std::out_of_range&) {}
     }
 
     std::stack<std::variant<long long, double, Polynomial>> st;
 
-    auto apply_binary_operation = [](auto a, auto b, const auto& op) -> std::variant<long long, double, Polynomial > {
-        return std::visit([&](auto type_a, auto type_b) {
-            return std::variant<long long, double>{op(type_a, type_b)};
-            }, a, b);
-        };
+    try {
+        auto apply_binary_operation_polynom_supported = [](auto a, auto b, const auto& op) -> std::variant<long long, double, Polynomial> {
+            return std::visit([&](auto type_a, auto type_b) {
+                return std::variant<long long, double, Polynomial>{op(type_a, type_b)};
+                }, a, b);
+            };
 
-    auto apply_unary_operation = [](std::variant<long long, double, Polynomial> a, const auto& op) -> std::variant<long long, double> {
-        return std::visit([&](auto type_a) {
-            if constexpr (std::is_same_v<decltype(type_a), Polynomial>) {
-                throw std::invalid_argument("Unary operations are not supported for Polynomial type");
-            }
-            return std::variant<long long, double>{ op(type_a) };
-            }, a);
-        };
+        auto apply_binary_operation_polynom_not_supported = [](auto a, auto b, const auto& op) -> std::variant<long long, double, Polynomial> {
+            return std::visit([&](auto type_a, auto type_b) -> std::variant<long long, double, Polynomial> {
+                if constexpr (std::is_same_v<std::decay_t<decltype(type_a)>, Polynomial> || std::is_same_v<std::decay_t<decltype(type_b)>, Polynomial>) {
+                    throw std::runtime_error("Unary operations are not allowed on Polynomials");
+                }
+                else {
+                    return op(type_a, type_b);
+                }
+                }, a, b);
+            };
 
-    for (const std::string& lexem : postfix_) {
-        if (lexem == "+" || lexem == "-" || lexem == "*" || lexem == "/" || lexem == "%") {
-            auto rightOperand = st.top(); st.pop();
-            auto leftOperand = st.top(); st.pop();
+        auto apply_unary_operation = [](std::variant<long long, double, Polynomial> a, const auto& op) -> std::variant<long long, double, Polynomial> {
+            return std::visit([&](auto type_a) -> std::variant<long long, double, Polynomial> {
+                if constexpr (std::is_same_v<std::decay_t<decltype(type_a)>, Polynomial>) {
+                    throw std::runtime_error("Unary operations are not allowed on Polynomials");
+                }
+                else {
+                    return op(type_a);
+                }
+                }, a);
+            };
 
-            if (lexem == "+") {
-                st.push(apply_binary_operation(leftOperand, rightOperand, std::plus<>()));
-            }
-            else if (lexem == "-") {
-                st.push(apply_binary_operation(leftOperand, rightOperand, std::minus<>()));
-            }
-            else if (lexem == "*") {
-                st.push(apply_binary_operation(leftOperand, rightOperand, std::multiplies<>()));
-            }
-            else if (lexem == "/") {
-                if (std::visit([](auto val) { return val == 0; }, rightOperand)) {
+        auto validate_right_operand = [](const auto& rightOperand) {
+            std::visit([](auto val) {
+                if constexpr (std::is_same_v<std::decay_t<decltype(val)>, Polynomial>) {
+                    throw std::runtime_error("Operation with polynomial is not allowed");
+                }
+                else if (val == 0) {
                     throw std::runtime_error("Division by zero");
                 }
-                st.push(apply_binary_operation(leftOperand, rightOperand, std::divides<>()));
-            }
-            else if (lexem == "%") {
-                if (std::visit([](auto val) { return val == 0; }, rightOperand)) {
-                    throw std::runtime_error("Division by zero");
-                }
-                st.push(apply_binary_operation(leftOperand, rightOperand, std::modulus<long long>()));
-            }
-        }
-        else if (IsFunction(lexem)) {
-            auto operand = st.top(); st.pop();
+                }, rightOperand);
+            };
 
-            if (lexem == "exp") {
-                st.push(apply_unary_operation(operand, [](auto x) { return std::exp(x); }));
-            }
-            else if (lexem == "sin") {
-                st.push(apply_unary_operation(operand, [](auto x) { return std::sin(x); }));
-            }
-            else if (lexem == "cos") {
-                st.push(apply_unary_operation(operand, [](auto x) { return std::cos(x); }));
-            }
-            else if (lexem == "lg") {
-                st.push(apply_unary_operation(operand, [](auto x) { return std::log10(x); }));
-            }
-            else if (lexem == "ln") {
-                st.push(apply_unary_operation(operand, [](auto x) { return std::log(x); }));
-            }
-            else if (lexem == "log") {
-                double degree;
-                std::cout << "Enter degree:";
-                std::cin >> degree;
-                if (degree <= 0 || degree == 1 || std::get<double>(operand) <= 0) {
-                    throw std::domain_error("Logarithm base must be greater than 0 and not equal to 1, and operand must be positive");
-                }
-                st.push(apply_unary_operation(operand, [degree](auto x) { return std::log(x) / std::log(degree); }));
-            }
-            else if (lexem == "sqrt") {
-                st.push(apply_unary_operation(operand, [](auto x) { return std::sqrt(x); }));
-            }
-        }
+        for (const std::string& lexem : postfix_) {
+            if (lexem == "+" || lexem == "-" || lexem == "*" || lexem == "/" || lexem == "%" || lexem == "^") {
+                auto rightOperand = st.top(); st.pop();
+                auto leftOperand = st.top(); st.pop();
 
-        else {
-            st.push(operands.at(lexem));
+                if (lexem == "+") {
+                    st.push(apply_binary_operation_polynom_supported(leftOperand, rightOperand, [](auto a, auto b) { return a + b; }));
+                }
+                else if (lexem == "-") {
+                    st.push(apply_binary_operation_polynom_supported(leftOperand, rightOperand, [](auto a, auto b) { return a - b; }));
+                }
+                else if (lexem == "*") {
+                    st.push(apply_binary_operation_polynom_supported(leftOperand, rightOperand, [](auto a, auto b) { return a * b; }));
+                }
+                else if (lexem == "^") {
+                    if (std::is_same_v<std::decay_t<decltype(leftOperand)>, Polynomial> &&
+                        std::is_integral_v<std::decay_t<decltype(rightOperand)>>) {
+                        st.push(Polynomial(std::get<long long>(rightOperand), 1.0));
+                    }
+                    else {
+                        st.push(apply_binary_operation_polynom_not_supported(leftOperand, rightOperand,
+                            [](auto a, auto b) { return std::pow(a, b); }));
+                    }
+                }
+                else if (lexem == "/") {
+                    validate_right_operand(rightOperand);
+                    st.push(apply_binary_operation_polynom_not_supported(leftOperand, rightOperand, [](auto a, auto b) { return a / b; }));
+                }
+                else if (lexem == "%") {
+                    validate_right_operand(rightOperand);
+                    st.push(apply_binary_operation_polynom_not_supported(leftOperand, rightOperand, [](long long a, long long b) { return a % b; }));
+                }
+            }
+            else if (IsFunction(lexem)) {
+                auto operand = st.top(); st.pop();
+                if (lexem == "exp") {
+                    st.push(apply_unary_operation(operand, [](auto x) { return std::exp(x); }));
+                }
+                else if (lexem == "sin") {
+                    st.push(apply_unary_operation(operand, [](auto x) { return std::sin(x); }));
+                }
+                else if (lexem == "cos") {
+                    st.push(apply_unary_operation(operand, [](auto x) { return std::cos(x); }));
+                }
+                else if (lexem == "lg") {
+                    st.push(apply_unary_operation(operand, [](auto x) { return std::log10(x); }));
+                }
+                else if (lexem == "ln") {
+                    st.push(apply_unary_operation(operand, [](auto x) { return std::log(x); }));
+                }
+                else if (lexem == "log") {
+                    double degree;
+                    std::cout << "Enter degree:";
+                    std::cin >> degree;
+                    if (degree <= 0 || degree == 1 || std::get<double>(operand) <= 0) {
+                        throw std::domain_error("Logarithm base must be greater than 0 and not equal to 1, and operand must be positive");
+                    }
+                    st.push(apply_unary_operation(operand, [degree](auto x) { return std::log(x) / std::log(degree); }));
+                }
+                else if (lexem == "sqrt") {
+                    st.push(apply_unary_operation(operand, [](auto x) { return std::sqrt(x); }));
+                }
+            }
+            else {
+                st.push(operands.at(lexem));
+            }
         }
+    }
+    catch (const std::exception& e) {
+        std::cerr << "Error: " << e.what() << std::endl;
     }
 
     return st.top();
 }
 
-std::variant<long long, double> ConvertToVariant(const std::string& str) {
+std::variant<long long, double, Polynomial> ConvertToVariant(const std::string& str) {
     if (str.find('.') != std::string::npos) {
         try {
             return std::stod(str);
@@ -264,7 +295,7 @@ std::variant<long long, double> ConvertToVariant(const std::string& str) {
             throw std::invalid_argument("Invalid input: not a valid number.");
         }
     }
-    else {
+    else if (str.find_first_not_of("0123456789") == std::string::npos) {
         try {
             return std::stoll(str);
         }
@@ -272,6 +303,14 @@ std::variant<long long, double> ConvertToVariant(const std::string& str) {
             throw std::invalid_argument("Invalid input: not a valid integer.");
         }
     }
+    else {
+        try {
+            return Polynomial::Parse(str);
+        }
+        catch (const std::exception&) {
+            throw std::invalid_argument("Invalid input: not a valid polynomial.");
+        }
+    }
 }
 
-#endif // _CALCULATOR_H
+#endif // _CACLULATOR_H
