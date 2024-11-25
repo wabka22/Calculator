@@ -200,7 +200,7 @@ std::variant<long long, double, Polynomial> Calculator::Calculate(const std::map
                 }, a);
             };
 
-        auto validate_right_operand = [](const auto& rightOperand) {
+        auto validate_right_operand = [](const auto& a) {
             std::visit([](auto val) {
                 if constexpr (std::is_same_v<std::decay_t<decltype(val)>, Polynomial>) {
                     throw std::runtime_error("Operation with polynomial is not allowed");
@@ -208,7 +208,7 @@ std::variant<long long, double, Polynomial> Calculator::Calculate(const std::map
                 else if (val == 0) {
                     throw std::runtime_error("Division by zero");
                 }
-                }, rightOperand);
+                }, a);
             };
 
         for (const std::string& lexem : postfix_) {
@@ -226,9 +226,9 @@ std::variant<long long, double, Polynomial> Calculator::Calculate(const std::map
                     st.push(apply_binary_operation_polynom_supported(leftOperand, rightOperand, [](auto a, auto b) { return a * b; }));
                 }
                 else if (lexem == "^") {
-                    if (std::is_same_v<std::decay_t<decltype(leftOperand)>, Polynomial> &&
-                        std::is_integral_v<std::decay_t<decltype(rightOperand)>>) {
-                        st.push(Polynomial(std::get<long long>(rightOperand), 1.0));
+                    if (std::holds_alternative<Polynomial>(leftOperand) &&
+                        std::holds_alternative<double>(rightOperand)) {
+                        st.push(Polynomial(std::get<double>(rightOperand), 1.0));
                     }
                     else {
                         st.push(apply_binary_operation_polynom_not_supported(leftOperand, rightOperand,

@@ -27,7 +27,6 @@ public:
         }
     }
     Polynomial(const std::map<int, double>& _terms) : terms(_terms) { removeZeroCoefficients(); }
-    Polynomial(const Polynomial& p) : terms(p.terms) {}
     ~Polynomial() = default;
 
     Polynomial& operator=(const Polynomial& p) {
