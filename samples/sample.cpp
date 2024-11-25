@@ -12,9 +12,9 @@ int main() {
         for (auto& op : operands) {
             if (!IsConst(op.first)) {
                 std::string value;
-                std::cout << "Enter value for " << op.first << " (or press no to skip): ";
+                std::cout << "Enter value for " << op.first << " (or press enter to skip): ";
                 std::getline(std::cin, value);
-                if (value == "no") value =op.first;
+                if (value == "") value =op.first;
                 op.second = ConvertToVariant(value);
             }
         }
