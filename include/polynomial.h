@@ -2,7 +2,12 @@
 #define _POLYNOMIAL_H
 #include <iostream>
 #include <map>
+#include <variant>
+#include <string>
 #include <sstream>
+#include <optional>
+#include <cmath>
+#include <stdexcept>
 
 class Polynomial {
 private:
@@ -45,12 +50,57 @@ public:
         return result;
     }
 
+    Polynomial operator+(double value) const {
+        Polynomial result(*this);
+        result.terms[0] += value;
+        result.removeZeroCoefficients();
+        return result;
+    }
+
+    Polynomial operator+(long long value) const {
+        Polynomial result(*this);
+        result.terms[0] += value;
+        result.removeZeroCoefficients();
+        return result;
+    }
+
+    friend Polynomial operator+(long long value, const Polynomial& p) {
+        return p + value;
+    }
+
+
+    friend Polynomial operator+(double value, const Polynomial& p) {
+        return p + value;
+    }
+
+    Polynomial operator-(double value) const {
+        return *this + (-value);
+    }
+
+    friend Polynomial operator-(double value, const Polynomial& p) {
+        Polynomial result;
+        result.terms[0] = value;
+        result = result - p;
+        return result;
+    }
+
     Polynomial operator-(const Polynomial& p) const {
         Polynomial result(*this);
         for (const auto& term : p.terms) {
             result.terms[term.first] -= term.second;
         }
         result.removeZeroCoefficients();
+        return result;
+    }
+
+    Polynomial operator-(long long value) const {
+        return *this + (-value);
+    }
+
+    friend Polynomial operator-(long long value, const Polynomial& p) {
+        Polynomial result;
+        result.terms[0] = value;
+        result = result - p;
         return result;
     }
 
@@ -70,33 +120,61 @@ public:
         for (auto& term : result.terms) {
             term.second *= value;
         }
+        result.removeZeroCoefficients();
         return result;
     }
 
     friend Polynomial operator*(double value, const Polynomial& p) {
         return p * value;
     }
-   
-    Polynomial operator+(double value) const {
+
+    Polynomial operator*(long long value) const {
         Polynomial result(*this);
-        result.terms[0] += value;
+        for (auto& term : result.terms) {
+            term.second *= value;
+        }
         result.removeZeroCoefficients();
         return result;
     }
 
-    friend Polynomial operator+(double value, const Polynomial& p) {
-        return p + value;
+    friend Polynomial operator*(long long value, const Polynomial& p) {
+        return p * value;
     }
 
-    Polynomial operator-(double value) const {
-        return *this + (-value);
-    }
-
-    friend Polynomial operator-(double value, const Polynomial& p) {
-        Polynomial result;
-        result.terms[0] = value;
-        result = result - p;
+    Polynomial operator/(double value) const {
+        if (value == 0) {
+            throw std::invalid_argument("Division by zero.");
+        }
+        Polynomial result(*this);
+        for (auto& term : result.terms) {
+            term.second /= value;
+        }
+        result.removeZeroCoefficients();
         return result;
+    }
+
+    Polynomial operator/(long long value) const {
+        if (value == 0) {
+            throw std::invalid_argument("Division by zero.");
+        }
+        Polynomial result(*this);
+        for (auto& term : result.terms) {
+            term.second /= value;
+        }
+        result.removeZeroCoefficients();
+        return result;
+    }
+
+    friend Polynomial operator/(double value, const Polynomial& p) {
+        throw std::invalid_argument("Polynomial division is not supported.");
+    }
+
+    friend Polynomial operator/(long long value, const Polynomial& p) {
+        throw std::invalid_argument("Polynomial division is not supported.");
+    }
+
+    Polynomial operator/(const Polynomial& p) const {
+        throw std::invalid_argument("Polynomial division is not supported.");
     }
 
     std::string ToString() const {
@@ -120,40 +198,6 @@ public:
             }
         }
         return oss.str().empty() ? "0" : oss.str();
-    }
-
-    Polynomial operator+(long long value) const {
-        Polynomial result(*this);
-        result.terms[0] += value;
-        result.removeZeroCoefficients();
-        return result;
-    }
-
-    friend Polynomial operator+(long long value, const Polynomial& p) {
-        return p + value;
-    }
-
-    Polynomial operator-(long long value) const {
-        return *this + (-value);
-    }
-
-    friend Polynomial operator-(long long value, const Polynomial& p) {
-        Polynomial result;
-        result.terms[0] = value;
-        result = result - p;
-        return result;
-    }
-
-    Polynomial operator*(long long value) const {
-        Polynomial result(*this);
-        for (auto& term : result.terms) {
-            term.second *= value;
-        }
-        return result;
-    }
-
-    friend Polynomial operator*(long long value, const Polynomial& p) {
-        return p * value;
     }
 
     static Polynomial Parse(const std::string& str) {

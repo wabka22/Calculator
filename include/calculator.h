@@ -237,7 +237,7 @@ std::variant<long long, double, Polynomial> Calculator::Calculate(const std::map
                 }
                 else if (lexem == "/") {
                     validate_right_operand(rightOperand);
-                    st.push(apply_binary_operation_polynom_not_supported(leftOperand, rightOperand, [](auto a, auto b) { return a / b; }));
+                    st.push(apply_binary_operation_polynom_supported(leftOperand, rightOperand, [](auto a, auto b) { return a / b; }));
                 }
                 else if (lexem == "%") {
                     validate_right_operand(rightOperand);
